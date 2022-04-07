@@ -1,0 +1,12 @@
+authentication:
+  instance_hostname: "nijimiss.moe" # Hostname of the instance
+  instance_key: ""
+  google_api_key: ""
+
+
+settings:
+  judging_score: 15 # If the judgment score exceeds a set value, the image is flagged.
+  limit_per_month: 1000 # Maximum number of images per month. 0 means no limit.
+
+
+debug: false
