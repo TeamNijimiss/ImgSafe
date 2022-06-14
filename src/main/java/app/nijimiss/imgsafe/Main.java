@@ -24,6 +24,7 @@ import ch.qos.logback.classic.Logger;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -105,9 +106,11 @@ public class Main {
 
                         var advancedFile = misskey.getFile(file.id());
 
+                        log.debug("Checking file... {}", advancedFile.toString());
+
                         var requestBody = new CloudVisionApiClient.VisionSafeSearchRequestBody(
                                 new CloudVisionApiClient.VisionSafeSearchRequestImage(
-                                        Base64.encodeBase64String(IOUtils.toByteArray(new URL(advancedFile.webpublicUrl())))));
+                                        Base64.encodeBase64String(IOUtils.toByteArray(new URL(StringUtils.defaultIfEmpty(advancedFile.webpublicUrl(), advancedFile.url()))))));
 
                         var request = new CloudVisionApiClient.VisionSafeSearchRequests(List.of(requestBody));
                         var safeSearchResult = vision.safeSearch(request);
