@@ -1,10 +1,11 @@
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id "io.freefair.lombok" version "6.4.3"
 }
 
 group 'app.nijimiss'
-version '0.1.1'
+version '0.1.2'
 
 jar {
     manifest {
@@ -22,24 +23,20 @@ repositories {
 
 dependencies {
     // Logger
-    implementation 'org.slf4j:slf4j-api:1.7.36'
-    implementation 'ch.qos.logback:logback-core:1.2.11'
-    implementation 'ch.qos.logback:logback-classic:1.2.11'
-    compileOnly 'org.projectlombok:lombok:1.18.22'
-    annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    testCompileOnly 'org.projectlombok:lombok:1.18.22'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    implementation 'org.slf4j:slf4j-api:2.0.1'
+    implementation 'ch.qos.logback:logback-core:1.4.0'
+    implementation 'ch.qos.logback:logback-classic:1.4.0'
 
     // ClientLib
-    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
-    implementation "com.squareup.okhttp3:logging-interceptor:4.9.3"
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.10.0'
 
     // Parser
     implementation 'com.google.code.gson:gson:2.9.0'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.2.2'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.2'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.2'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.4'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.4'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
 
     // Commons Library
     implementation 'commons-io:commons-io:2.11.0'
