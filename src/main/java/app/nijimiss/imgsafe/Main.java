@@ -79,18 +79,12 @@ public class Main {
                 var lastChecked = temp != null ? new Date(temp.lastChecked()) : new Date();
                 int limit = 10;
 
-                if (requestedCount + limit > config.getSettings().getLimitPerMonth()) {
-                    var lastCheckedCalendar = Calendar.getInstance();
-                    lastCheckedCalendar.setTime(lastChecked);
+                var lastCheckedCalendar = Calendar.getInstance();
+                lastCheckedCalendar.setTime(lastChecked);
+                var nowCalender = Calendar.getInstance();
 
-                    var nowCalender = Calendar.getInstance();
-
-                    if (lastCheckedCalendar.get(Calendar.MONTH) < nowCalender.get(Calendar.MONTH)) {
-                        requestedCount = 0;
-                    } else {
-                        return;
-                    }
-                }
+                if (lastCheckedCalendar.get(Calendar.MONTH) < nowCalender.get(Calendar.MONTH))
+                    requestedCount = 0;
 
                 log.info("Checking for new images...");
                 try {
