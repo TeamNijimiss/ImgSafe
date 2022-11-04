@@ -16,6 +16,7 @@
 
 package app.nijimiss.imgsafe.api.vision;
 
+import app.nijimiss.imgsafe.ImgSafeTemp;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -37,11 +38,17 @@ public class CloudVisionApiClient {
     private final ObjectMapper mapper;
 
     private final String token;
+    private final int limit;
 
     public CloudVisionApiClient(String token) {
+        this(token, 1000);
+    }
+
+    public CloudVisionApiClient(String token, int limit) {
         if (StringUtils.isEmpty(token))
             throw new IllegalArgumentException();
         this.token = token;
+        this.limit = limit;
 
         okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new HttpLoggingInterceptor(log::debug))
@@ -50,6 +57,9 @@ public class CloudVisionApiClient {
     }
 
     public VisionSafeSearchResult safeSearch(VisionSafeSearchRequests requests) throws IOException {
+        if (ImgSafeTemp.getRequestedCount() >= limit)
+            throw new IllegalStateException("API Limit Exceeded");
+
         HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(API_ADDRESS)).newBuilder();
         builder.addQueryParameter("key", token);
         builder.addQueryParameter("alt", "json");
@@ -62,6 +72,8 @@ public class CloudVisionApiClient {
                 .build();
 
         try (Response response = okHttpClient.newCall(request).execute()) {
+            ImgSafeTemp.setRequestedCount(ImgSafeTemp.getRequestedCount() + 1);
+
             if (response.code() == 200) {
                 return mapper.readValue(response.body().string(), new TypeReference<>() {
                 });

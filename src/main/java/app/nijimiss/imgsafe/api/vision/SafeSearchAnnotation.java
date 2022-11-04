@@ -21,4 +21,13 @@ public record SafeSearchAnnotation(LikelinessLevel adult,
                                    LikelinessLevel medical,
                                    LikelinessLevel violence,
                                    LikelinessLevel racy) {
+
+    @Override
+    public String toString() {
+        return "adult=" + adult +
+                ", spoof=" + spoof +
+                ", medical=" + medical +
+                ", violence=" + violence +
+                ", racy=" + racy;
+    }
 }

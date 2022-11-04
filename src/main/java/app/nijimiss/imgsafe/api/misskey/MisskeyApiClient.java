@@ -18,15 +18,18 @@ package app.nijimiss.imgsafe.api.misskey;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -35,10 +38,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-
-import static com.fasterxml.jackson.core.JsonParser.Feature.*;
 
 @Slf4j
 public class MisskeyApiClient {
@@ -76,15 +78,14 @@ public class MisskeyApiClient {
         okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new HttpLoggingInterceptor(log::debug))
                 .build();
-        mapper = new ObjectMapper();
-        mapper.enable(
-                ALLOW_UNQUOTED_FIELD_NAMES,
-                ALLOW_TRAILING_COMMA,
-                ALLOW_SINGLE_QUOTES,
-                ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER,
-                ALLOW_NON_NUMERIC_NUMBERS,
-                ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS
-        ); // Misskey APIがJson5形式で応答する可能性があるため、これらの設定を有効にする。
+        mapper = JsonMapper.builder()
+                .enable(JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES)
+                .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
+                .enable(JsonReadFeature.ALLOW_SINGLE_QUOTES)
+                .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
+                .enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS)
+                .enable(JsonReadFeature.ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS)
+                .build(); // Misskey APIがJson5形式で応答する可能性があるため、これらの設定を有効にする。
         SimpleModule module = new SimpleModule();
         module.addDeserializer(OffsetDateTime.class, new JsonDeserializer<>() {
             @Override
@@ -96,7 +97,18 @@ public class MisskeyApiClient {
         mapper.registerModule(module); // OffsetDateTimeをdeserializeするために必要
     }
 
-    public List<File> getFiles(int limit, @Nullable String sinceId) throws IOException {
+    public Meta getMeta() throws IOException {
+        Request request = new Request.Builder()
+                .url(hostname + "/api/admin/meta")
+                .post(RequestBody.create("{\"i\":\"" + token + "\"}", MediaType.get("application/json; charset=utf-8")))
+                .build();
+        Response response = okHttpClient.newCall(request).execute();
+        if (!response.isSuccessful())
+            throw new IOException("Unexpected code " + response);
+        return mapper.readValue(Objects.requireNonNull(response.body()).string(), Meta.class);
+    }
+
+    public @NotNull List<File> getFiles(int limit, @Nullable String sinceId) throws IOException {
         HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(hostname + API_ENDPOINT_FILES)).newBuilder();
         Request request = new Request.Builder()
                 .url(builder.build())
@@ -109,7 +121,7 @@ public class MisskeyApiClient {
                 return mapper.readValue(response.body().string(), new TypeReference<>() {
                 });
             }
-            return null;
+            return Collections.emptyList();
         }
     }
 

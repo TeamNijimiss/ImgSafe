@@ -16,20 +16,17 @@
 
 package app.nijimiss.imgsafe;
 
-import app.nijimiss.imgsafe.api.misskey.File;
+import app.nijimiss.imgsafe.api.misskey.Meta;
 import app.nijimiss.imgsafe.api.misskey.MisskeyApiClient;
 import app.nijimiss.imgsafe.api.vision.CloudVisionApiClient;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.*;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
@@ -39,20 +36,16 @@ public class Main {
     private static ImgSafeConfig config;
 
     public static void main(String[] args) {
-        log.info("Starting ImgSafe...");
-        log.debug(getDebugInfo());
+        log.info("Starting ImgSafe");
+        log.debug(getSystemInfo());
 
         for (String prop : args) {
-            switch (prop.toLowerCase()) {
-                case "debug":
-                    debug = true;
-                    break;
-
-                default:
-                    break;
+            if ("debug".equals(prop.toLowerCase())) {
+                debug = true;
             }
         }
 
+        log.info("Loading configuration file...");
         ConfigLoader configLoader = new ConfigLoader();
         configLoader.generateDefaultConfig();
         config = configLoader.getConfig();
@@ -61,99 +54,44 @@ public class Main {
         if (!debug) {
             var root = (Logger) LoggerFactory.getLogger(ROOT_LOGGER_NAME);
             root.setLevel(Level.INFO);
+        } else {
+            log.debug("Boot with debug mode");
         }
 
-        // Connect to Misskey instance
+        // Create API clients
         MisskeyApiClient misskey = new MisskeyApiClient(config.getAuthentication().getInstanceHostname(), config.getAuthentication().getInstanceKey());
-        CloudVisionApiClient vision = new CloudVisionApiClient(config.getAuthentication().getGoogleAPIKey());
+        CloudVisionApiClient vision = new CloudVisionApiClient(config.getAuthentication().getGoogleAPIKey(), config.getSettings().getLimitPerMonth());
 
+        try {
+            Meta meta = misskey.getMeta();
+            log.info("API connection: Misskey... OK (v{})", meta.version());
+        } catch (IOException e) {
+            log.error("\"API connection: Misskey... Failed", e);
+            System.exit(1);
+        }
 
-        TimerTask imageCheckTask = new TimerTask() {
-            private final TempFileManager tempFileManager = new TempFileManager();
+        // TODO: 2022/11/05 Vision API Connection check.
 
-            @Override
-            public void run() {
-                var temp = tempFileManager.load();
-                String lastCheckedImage = temp != null ? temp.lastCheckedFile() : null;
-                int requestedCount = temp != null ? temp.requestedCount() : 0;
-                var lastChecked = temp != null ? new Date(temp.lastChecked()) : new Date();
-                int limit = 10;
-
-                var lastCheckedCalendar = Calendar.getInstance();
-                lastCheckedCalendar.setTime(lastChecked);
-                var nowCalender = Calendar.getInstance();
-
-                if (lastCheckedCalendar.get(Calendar.MONTH) < nowCalender.get(Calendar.MONTH))
-                    requestedCount = 0;
-
-                log.info("Checking for new images...");
-                try {
-                    var files = misskey.getFiles(limit, lastCheckedImage);
-                    Collections.reverse(files);
-
-                    for (File file : files) {
-                        if (!(file.type().equals("image/png") || file.type().equals("image/jpeg") || file.type().equals("image/gif")))
-                            continue;
-
-                        if (file.isSensitive())
-                            continue;
-
-                        var advancedFile = misskey.getFile(file.id());
-
-                        log.debug("Checking file... {}", advancedFile.toString());
-
-                        var requestBody = new CloudVisionApiClient.VisionSafeSearchRequestBody(
-                                new CloudVisionApiClient.VisionSafeSearchRequestImage(
-                                        Base64.encodeBase64String(IOUtils.toByteArray(new URL(StringUtils.defaultIfEmpty(advancedFile.webpublicUrl(), advancedFile.url()))))));
-
-                        var request = new CloudVisionApiClient.VisionSafeSearchRequests(List.of(requestBody));
-                        var safeSearchResult = vision.safeSearch(request);
-                        var response = safeSearchResult.responses().get(0);
-
-                        log.debug(response.safeSearchAnnotation().toString());
-                        if (response.safeSearchAnnotation().adult().getLevel() >= config.getSettings().getJudgingScore()
-                                || response.safeSearchAnnotation().violence().getLevel() >= config.getSettings().getJudgingScore()) {
-                            misskey.updateFile(file, true);
-
-                            log.info("Found unsafe file.: {} ", file.id());
-                        }
-
-                        lastCheckedImage = file.id();
-                        lastChecked = new Date();
-
-                        Thread.sleep(1000); // クールタイム
-                    }
-
-                    tempFileManager.save(new TempFileManager.Temp(lastCheckedImage, lastChecked.getTime(), requestedCount + files.size()));
-                } catch (IOException e) {
-                    log.error(e.getMessage(), e);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-
+        log.info("Starting ImageCheckTask...");
+        TimerTask imageCheckTask = new ImageCheckTask(misskey, vision, config.getSettings().getJudgingScore());
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(imageCheckTask, 0, 600000); // 10分ごとにチェック
     }
 
-    private static String getDebugInfo() {
+    private static String getSystemInfo() {
         long max = Runtime.getRuntime().maxMemory() / 1048576L;
         long total = Runtime.getRuntime().totalMemory() / 1048576L;
         long free = Runtime.getRuntime().freeMemory() / 1048576L;
         long used = total - free;
 
-        StringBuilder builder = new StringBuilder();
-        builder.append("\n====== System Info ======\n");
-        builder.append("Operating System:      ").append(System.getProperty("os.name")).append("\n");
-        builder.append("JVM Version:           ").append(System.getProperty("java.version")).append("\n");
-        builder.append("ImgSafe Version:    ").append(Main.class.getPackage().getImplementationVersion()).append("\n");
-        builder.append("====== Memory Info ======\n");
-        builder.append("Reserved memory:       ").append(total).append("MB\n");
-        builder.append("  -> Used:             ").append(used).append("MB\n");
-        builder.append("  -> Free:             ").append(free).append("MB\n");
-        builder.append("Max. reserved memory:  ").append(max).append("MB");
-
-        return builder.toString();
+        return "\n====== System Info ======\n" +
+                "Operating System:      " + System.getProperty("os.name") + "\n" +
+                "JVM Version:           " + System.getProperty("java.version") + "\n" +
+                "ImgSafe Version:    " + Main.class.getPackage().getImplementationVersion() + "\n" +
+                "====== Memory Info ======\n" +
+                "Reserved memory:       " + total + "MB\n" +
+                "  -> Used:             " + used + "MB\n" +
+                "  -> Free:             " + free + "MB\n" +
+                "Max. reserved memory:  " + max + "MB";
     }
 }
