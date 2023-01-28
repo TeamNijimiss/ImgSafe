@@ -25,6 +25,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.text.DateFormat;
@@ -86,9 +87,16 @@ public class ImageCheckTask extends TimerTask {
                     log.debug("Checking image: {}", fullFileInfo.name());
                     log.debug("Encoding image to base64...");
 
-                    var requestBody = new CloudVisionApiClient.VisionSafeSearchRequestBody(
-                            new CloudVisionApiClient.VisionSafeSearchRequestImage(
-                                    Base64.encodeBase64String(IOUtils.toByteArray(new URL(StringUtils.defaultIfEmpty(fullFileInfo.webpublicUrl(), fullFileInfo.url()))))));
+                    String base64Image;
+                    try {
+                        base64Image = Base64.encodeBase64String(IOUtils.toByteArray(new URL(StringUtils.defaultIfEmpty(fullFileInfo.webpublicUrl(), fullFileInfo.url()))));
+                    } catch (FileNotFoundException e) {
+                        log.warn("Image {} is not found.", fullFileInfo.name());
+                        continue;
+                    }
+
+                    val requestBody = new CloudVisionApiClient.VisionSafeSearchRequestBody(
+                            new CloudVisionApiClient.VisionSafeSearchRequestImage(base64Image));
 
                     val request = new CloudVisionApiClient.VisionSafeSearchRequests(List.of(requestBody));
                     val safeSearchResult = vision.safeSearch(request);
