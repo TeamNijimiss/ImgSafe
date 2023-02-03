@@ -38,7 +38,6 @@ public record File(
         Object comment,
         String folderID,
         Folder folder,
-        String userID,
-        User user
+        String userID
 ) {
 }
