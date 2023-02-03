@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'app.nijimiss'
-version '0.2.1'
+version '0.2.2'
 
 jar {
     manifest {
