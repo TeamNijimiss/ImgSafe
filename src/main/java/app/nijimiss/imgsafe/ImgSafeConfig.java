@@ -43,5 +43,19 @@ public class ImgSafeConfig {
         private int judgingScore;
         @JsonProperty("limit_per_month")
         private int limitPerMonth;
+        @JsonProperty("checking_image_size_min")
+        private int checkingImageSizeMin;
+        @JsonProperty("webhook")
+        private Webhook webhook;
+    }
+
+    @Data
+    public static class Webhook {
+        @JsonProperty("enable")
+        private boolean enable;
+        @JsonProperty("url")
+        private String url;
+        @JsonProperty("template")
+        private String template;
     }
 }

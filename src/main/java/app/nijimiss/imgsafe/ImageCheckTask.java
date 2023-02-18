@@ -19,6 +19,7 @@ package app.nijimiss.imgsafe;
 import app.nijimiss.imgsafe.api.misskey.File;
 import app.nijimiss.imgsafe.api.misskey.MisskeyApiClient;
 import app.nijimiss.imgsafe.api.vision.CloudVisionApiClient;
+import app.nijimiss.imgsafe.webhook.WebhookManager;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.codec.binary.Base64;
@@ -35,12 +36,20 @@ import java.util.*;
 public class ImageCheckTask extends TimerTask {
     private final MisskeyApiClient misskey;
     private final CloudVisionApiClient vision;
+    private final WebhookManager webhookManager;
     private final int judgingScore;
+    private int checkingImageSizeMin = 400;
 
-    public ImageCheckTask(MisskeyApiClient misskey, CloudVisionApiClient vision, int judgingScore) {
+
+    public ImageCheckTask(MisskeyApiClient misskey, CloudVisionApiClient vision, WebhookManager webhookManager, int judgingScore) {
         this.misskey = misskey;
         this.vision = vision;
+        this.webhookManager = webhookManager;
         this.judgingScore = judgingScore;
+    }
+
+    public void setCheckingImageSizeMin(int size) {
+        this.checkingImageSizeMin = size;
     }
 
     @Override
@@ -71,6 +80,7 @@ public class ImageCheckTask extends TimerTask {
                     images = files.stream()
                             .filter(file -> file.type().equals("image/png") || file.type().equals("image/jpeg") || file.type().equals("image/gif"))
                             .filter(file -> !file.isSensitive())
+                            .filter(file -> file.properties().height() > checkingImageSizeMin && file.properties().width() > checkingImageSizeMin)
                             .sorted(Comparator.comparing(File::createdAt))
                             .toList();
 
@@ -107,6 +117,10 @@ public class ImageCheckTask extends TimerTask {
                     if (response.safeSearchAnnotation().adult().getLevel() >= judgingScore
                             || response.safeSearchAnnotation().violence().getLevel() >= judgingScore) {
                         misskey.updateFile(file, true);
+
+                        if (webhookManager != null) {
+                            webhookManager.sendWebhook(file, file.userId(), response.safeSearchAnnotation());
+                        }
 
                         log.debug("Image {} is sensitive.", fullFileInfo.name());
                         log.debug("Marked as sensitive on Misskey.");

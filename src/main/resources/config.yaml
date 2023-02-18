@@ -7,6 +7,11 @@ authentication:
 settings:
   judging_score: 15 # If the judgment score exceeds a set value, the image is flagged.
   limit_per_month: 1000 # Maximum number of images per month. 0 means no limit.
+  checking_image_size_min: 400 # Minimum size of the image to be checked. (px)
+  webhook:
+    enable: false
+    url: ""
+    template: "{ \"content\": \"Images deemed sensitive were found.\\nFile ID:{fileId}\\nAuthor: {authorUser}\\nResult: {checkResult}\" }"
 
 
 debug: false

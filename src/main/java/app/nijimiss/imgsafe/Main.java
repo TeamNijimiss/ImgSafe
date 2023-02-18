@@ -19,6 +19,7 @@ package app.nijimiss.imgsafe;
 import app.nijimiss.imgsafe.api.misskey.Meta;
 import app.nijimiss.imgsafe.api.misskey.MisskeyApiClient;
 import app.nijimiss.imgsafe.api.vision.CloudVisionApiClient;
+import app.nijimiss.imgsafe.webhook.WebhookManager;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +41,9 @@ public class Main {
         log.debug(getSystemInfo());
 
         for (String prop : args) {
-            if ("debug".equals(prop.toLowerCase())) {
+            if ("debug".equalsIgnoreCase(prop)) {
                 debug = true;
+                break;
             }
         }
 
@@ -61,6 +63,8 @@ public class Main {
         // Create API clients
         MisskeyApiClient misskey = new MisskeyApiClient(config.getAuthentication().getInstanceHostname(), config.getAuthentication().getInstanceKey());
         CloudVisionApiClient vision = new CloudVisionApiClient(config.getAuthentication().getGoogleAPIKey(), config.getSettings().getLimitPerMonth());
+        WebhookManager webhookManage = config.getSettings().getWebhook().isEnable() ? new WebhookManager(config.getSettings().getWebhook().getUrl(),
+                config.getSettings().getWebhook().getTemplate()) : null;
 
         try {
             Meta meta = misskey.getMeta();
@@ -73,7 +77,7 @@ public class Main {
         // TODO: 2022/11/05 Vision API Connection check.
 
         log.info("Starting ImageCheckTask...");
-        TimerTask imageCheckTask = new ImageCheckTask(misskey, vision, config.getSettings().getJudgingScore());
+        TimerTask imageCheckTask = new ImageCheckTask(misskey, vision, webhookManage, config.getSettings().getJudgingScore());
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(imageCheckTask, 0, 600000); // 10分ごとにチェック
     }
