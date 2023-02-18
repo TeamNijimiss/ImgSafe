@@ -19,7 +19,6 @@ package app.nijimiss.imgsafe.api.misskey;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.OffsetDateTime;
-import java.util.Properties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record File(
@@ -36,8 +35,8 @@ public record File(
         String thumbnailUrl,
         String webpublicUrl,
         Object comment,
-        String folderID,
+        String folderId,
         Folder folder,
-        String userID
+        String userId
 ) {
 }
