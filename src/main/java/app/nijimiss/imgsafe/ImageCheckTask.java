@@ -110,6 +110,12 @@ public class ImageCheckTask extends TimerTask {
 
                     val request = new CloudVisionApiClient.VisionSafeSearchRequests(List.of(requestBody));
                     val safeSearchResult = vision.safeSearch(request);
+
+                    if (safeSearchResult.responses().isEmpty()) {
+                        log.warn("Image {} was ignored because an error was returned.", fullFileInfo.name());
+                        continue;
+                    }
+
                     val response = safeSearchResult.responses().get(0);
 
                     log.debug("Safe search result: {}", response.safeSearchAnnotation());

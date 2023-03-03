@@ -17,6 +17,8 @@
 package app.nijimiss.imgsafe.api.vision;
 
 import app.nijimiss.imgsafe.ImgSafeTemp;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -78,7 +80,10 @@ public class CloudVisionApiClient {
                 return mapper.readValue(response.body().string(), new TypeReference<>() {
                 });
             }
-            return null;
+            return new VisionSafeSearchResult(List.of());
+        } catch (JsonProcessingException e) {
+            log.warn("An error was returned for this image.", e);
+            return new VisionSafeSearchResult(List.of());
         }
     }
 
